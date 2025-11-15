@@ -1,6 +1,6 @@
 # TodaGo
 
-![Signup](screenshots/signup.png)
-![Login](screenshots/login.png)
-![Booking](screenshots/booking.png)
-![Ride](screenshots/ride.png)
+![Signup](screenshots/signup.jpg)
+![Login](screenshots/login.jpg)
+![Booking](screenshots/booking.jpg)
+![Ride](screenshots/ride.jpg)
