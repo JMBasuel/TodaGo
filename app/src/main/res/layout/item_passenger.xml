@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/cv_passenger"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="5dp"
+    android:clickable="true"
+    android:focusable="true"
+    app:cardBackgroundColor="#80F3F6FF"
+    app:cardCornerRadius="3dp"
+    app:cardElevation="0dp">
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="15dp"
+        android:paddingVertical="10dp">
+
+        <de.hdodenhof.circleimageview.CircleImageView
+            android:id="@+id/passenger_profile"
+            android:layout_width="40dp"
+            android:layout_height="0dp"
+            android:layout_alignBottom="@+id/passenger_weight"
+            android:layout_alignParentStart="true"
+            android:layout_alignParentTop="true"
+            android:layout_marginEnd="15dp" />
+
+        <TextView
+            android:id="@+id/passenger_name"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentEnd="true"
+            android:layout_toEndOf="@+id/passenger_profile"
+            android:textAllCaps="true"
+            android:textColor="@color/black"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <RatingBar
+            android:id="@+id/passenger_stars"
+            style="?android:attr/ratingBarStyleSmall"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/passenger_name"
+            android:layout_marginBottom="2dp"
+            android:layout_toEndOf="@+id/passenger_profile"
+            android:isIndicator="true"
+            android:numStars="5"
+            android:progressBackgroundTint="@color/gray"
+            android:progressTint="@color/yellow"
+            android:secondaryProgressTint="@android:color/transparent"
+            android:stepSize="0.1" />
+
+        <TextView
+            android:id="@+id/passenger_rate"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/passenger_name"
+            android:layout_alignParentEnd="true"
+            android:layout_toEndOf="@id/passenger_stars"
+            android:paddingHorizontal="10dp"
+            android:textColor="@color/black"
+            android:textSize="12sp"
+            android:textStyle="italic|bold" />
+
+        <TextView
+            android:id="@+id/passenger_weight"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/passenger_stars"
+            android:layout_toStartOf="@id/passenger_status"
+            android:layout_toEndOf="@+id/passenger_profile"
+            android:letterSpacing="0.2"
+            android:textSize="11sp" />
+
+        <TextView
+            android:id="@+id/passenger_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/passenger_rate"
+            android:layout_alignBottom="@+id/passenger_weight"
+            android:layout_alignParentEnd="true"
+            android:gravity="center"
+            android:textColor="@color/gray"
+            android:textSize="13sp" />
+
+    </RelativeLayout>
+
+</androidx.cardview.widget.CardView>

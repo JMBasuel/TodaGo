@@ -1,0 +1,31 @@
+<resources>
+
+    <style name="Theme.TodaGo" parent="Theme.Material3.Light.NoActionBar">
+        <!--        <item name="android:statusBarColor">@color/blue</item>-->
+    </style>
+
+    <style name="TextInputStyle" parent="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense">
+        <item name="counterTextColor">@color/black</item>
+        <item name="hintTextColor">@color/gray_dark</item>
+        <item name="android:textColorHint">@color/gray_dark</item>
+        <item name="endIconTint">@color/blue_dark_dark</item>
+        <item name="errorTextColor">@color/red</item>
+        <item name="boxStrokeColor">@color/gray_dark</item>
+        <item name="boxStrokeErrorColor">@color/red</item>
+        <item name="cursorColor">@color/gray_dark</item>
+        <item name="errorIconTint">@color/red</item>
+        <item name="passwordToggleTint">@color/blue_dark_dark</item>
+        <item name="startIconTint">@color/blue_dark_dark</item>
+        <item name="helperTextTextColor">@color/red</item>
+        <item name="boxBackgroundColor">@color/white</item>
+        <item name="boxCornerRadiusTopEnd">10dp</item>
+        <item name="boxCornerRadiusBottomEnd">10dp</item>
+        <item name="boxCornerRadiusBottomStart">10dp</item>
+        <item name="boxCornerRadiusTopStart">10dp</item>
+    </style>
+
+    <style name="ScrollBar" parent="Theme.TodaGo">
+        <item name="android:scrollbarThumbVertical">@drawable/scrollbar</item>
+    </style>
+
+</resources>

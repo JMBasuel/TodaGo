@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/navigation"
+    app:startDestination="@id/login">
+
+    <fragment
+        android:id="@+id/login"
+        android:name="com.zinterr.todago.ui.login.Login"
+        android:label="login"
+        tools:layout="@layout/login" >
+        <action
+            android:id="@+id/action_login_to_forgot"
+            app:destination="@id/forgot" />
+        <action
+            android:id="@+id/action_login_to_signupCommuter"
+            app:destination="@id/signupCommuter" />
+    </fragment>
+    <fragment
+        android:id="@+id/forgot"
+        android:name="com.zinterr.todago.ui.login.Forgot"
+        android:label="forgot"
+        tools:layout="@layout/forgot" />
+    <fragment
+        android:id="@+id/signupCommuter"
+        android:name="com.zinterr.todago.ui.login.Signup"
+        android:label="signup_commuter"
+        tools:layout="@layout/signup" >
+        <action
+            android:id="@+id/action_signupCommuter_to_terms"
+            app:destination="@id/terms" />
+        <action
+            android:id="@+id/action_signupCommuter_to_policy"
+            app:destination="@id/policy" />
+    </fragment>
+    <fragment
+        android:id="@+id/terms"
+        android:name="com.zinterr.todago.ui.tcpp.Terms"
+        android:label="terms"
+        tools:layout="@layout/terms" />
+    <fragment
+        android:id="@+id/policy"
+        android:name="com.zinterr.todago.ui.tcpp.Policy"
+        android:label="policy"
+        tools:layout="@layout/policy" />
+</navigation>

@@ -1,0 +1,552 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:map="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/ride_activity"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/background"
+    tools:context=".ui.ride.RideActivity">
+
+    <androidx.fragment.app.FragmentContainerView
+        android:id="@+id/map_ride"
+        android:name="com.google.android.gms.maps.SupportMapFragment"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        map:cameraZoom="18"
+        map:mapColorScheme="follow_system"
+        map:uiCompass="false"
+        map:uiRotateGestures="false"
+        map:uiZoomGestures="true" />
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <RelativeLayout
+            android:id="@+id/header_title"
+            android:layout_width="wrap_content"
+            android:layout_height="0dp"
+            android:paddingBottom="10dp"
+            app:layout_constraintHeight_percent="0.085"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <ImageButton
+                android:id="@+id/btn_Back"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentStart="true"
+                android:layout_alignParentBottom="true"
+                android:layout_marginHorizontal="10dp"
+                android:background="@drawable/image_btn"
+                android:contentDescription="@string/back"
+                android:padding="5dp"
+                android:src="@drawable/back" />
+
+        </RelativeLayout>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <LinearLayout
+        android:id="@+id/camera"
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        android:gravity="center"
+        android:translationY="-40dp"
+        app:layout_anchor="@id/bottomSheet"
+        app:layout_anchorGravity="top|right">
+
+        <ImageButton
+            android:id="@+id/btn_camera"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:background="@drawable/circle_white_transparent"
+            android:contentDescription="@string/camera_button"
+            android:src="@drawable/location" />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/bottomSheet"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bottom_sheet_bg"
+        android:clickable="true"
+        android:focusable="true"
+        android:orientation="vertical"
+        app:behavior_hideable="false"
+        app:behavior_peekHeight="200dp"
+        app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior">
+
+        <com.google.android.material.bottomsheet.BottomSheetDragHandleView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="20dp"
+            android:layout_marginBottom="10dp"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/ride_status"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:textAllCaps="true"
+                android:textColor="@color/blue_dark"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/ride_duration_driver"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@drawable/circle_blue_dark"
+                android:gravity="center"
+                android:textColor="@color/white"
+                android:textSize="12sp"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/ride_duration_ride"
+                android:layout_width="50dp"
+                android:layout_height="50dp"
+                android:background="@drawable/circle_blue_dark"
+                android:gravity="center"
+                android:textColor="@color/white"
+                android:textSize="14sp"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+        <androidx.cardview.widget.CardView
+            android:id="@+id/cv_driver"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="20dp"
+            android:layout_marginBottom="10dp"
+            android:visibility="gone"
+            app:cardBackgroundColor="#80F3F6FF"
+            app:cardCornerRadius="3dp"
+            app:cardElevation="0dp">
+
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="5dp">
+
+                <de.hdodenhof.circleimageview.CircleImageView
+                    android:id="@+id/driver_profile"
+                    android:layout_width="50dp"
+                    android:layout_height="0dp"
+                    android:layout_alignBottom="@+id/driver_plate"
+                    android:layout_alignParentStart="true"
+                    android:layout_alignParentTop="true"
+                    android:layout_marginEnd="10dp" />
+
+                <TextView
+                    android:id="@+id/driver_name"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentTop="true"
+                    android:layout_toStartOf="@+id/buttons"
+                    android:layout_toEndOf="@+id/driver_profile"
+                    android:textAllCaps="true"
+                    android:textColor="@color/black"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <RatingBar
+                    android:id="@+id/driver_stars"
+                    style="?android:attr/ratingBarStyleSmall"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_below="@+id/driver_name"
+                    android:layout_marginBottom="2dp"
+                    android:layout_toEndOf="@+id/driver_profile"
+                    android:isIndicator="true"
+                    android:numStars="5"
+                    android:progressBackgroundTint="@color/gray"
+                    android:progressTint="@color/yellow"
+                    android:secondaryProgressTint="@android:color/transparent"
+                    android:stepSize="0.1" />
+
+                <TextView
+                    android:id="@+id/driver_rate"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_below="@+id/driver_name"
+                    android:layout_toStartOf="@id/buttons"
+                    android:layout_toEndOf="@id/driver_stars"
+                    android:paddingHorizontal="10dp"
+                    android:textColor="@color/black"
+                    android:textSize="12sp"
+                    android:textStyle="italic|bold" />
+
+                <TextView
+                    android:id="@+id/driver_plate"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_below="@+id/driver_stars"
+                    android:layout_toStartOf="@+id/driver_status"
+                    android:layout_toEndOf="@+id/driver_profile"
+                    android:letterSpacing="0.3"
+                    android:textAllCaps="true"
+                    android:textColor="@color/gray_light"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:id="@+id/buttons"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentTop="true"
+                    android:layout_alignParentEnd="true"
+                    android:orientation="horizontal">
+
+                    <ImageButton
+                        android:id="@+id/btn_call"
+                        android:layout_width="30dp"
+                        android:layout_height="30dp"
+                        android:layout_marginEnd="5dp"
+                        android:adjustViewBounds="true"
+                        android:background="@drawable/image_btn_action"
+                        android:contentDescription="@string/call"
+                        android:padding="5dp"
+                        android:scaleType="centerInside"
+                        android:src="@drawable/call" />
+
+                    <ImageButton
+                        android:id="@+id/btn_chat"
+                        android:layout_width="30dp"
+                        android:layout_height="30dp"
+                        android:adjustViewBounds="true"
+                        android:background="@drawable/image_btn_action"
+                        android:contentDescription="@string/chat"
+                        android:padding="5dp"
+                        android:scaleType="centerInside"
+                        android:src="@drawable/chat" />
+
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/driver_status"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_below="@+id/buttons"
+                    android:layout_alignBottom="@+id/driver_plate"
+                    android:layout_alignParentEnd="true"
+                    android:textColor="@color/gray"
+                    android:textSize="12sp" />
+
+            </RelativeLayout>
+
+        </androidx.cardview.widget.CardView>
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="20dp"
+            android:layout_marginBottom="10dp"
+            android:paddingStart="20dp"
+            android:paddingEnd="0dp">
+
+            <TextView
+                android:id="@+id/ride_duration_title"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:text="@string/duration"
+                android:textColor="@color/gray"
+                android:textSize="13sp"
+                app:layout_constraintEnd_toStartOf="@+id/ride_distance_title"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <TextView
+                android:id="@+id/ride_duration"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:textColor="@color/gray_dark"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                app:layout_constraintEnd_toStartOf="@+id/ride_distance"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/ride_duration_title" />
+
+            <TextView
+                android:id="@+id/ride_distance_title"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:text="@string/distance"
+                android:textColor="@color/gray"
+                android:textSize="13sp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toEndOf="@+id/ride_duration_title"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <TextView
+                android:id="@+id/ride_distance"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:textColor="@color/gray_dark"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toEndOf="@+id/ride_duration"
+                app:layout_constraintTop_toBottomOf="@+id/ride_distance_title" />
+
+            <TextView
+                android:id="@+id/ride_price_title"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="5dp"
+                android:text="@string/price_breakdown"
+                android:textColor="@color/gray"
+                android:textSize="13sp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/ride_duration" />
+
+            <TextView
+                android:id="@+id/price_pending"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="5dp"
+                android:text="@string/pending"
+                android:textColor="@color/gray_dark"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/ride_price_title" />
+
+            <RelativeLayout
+                android:id="@+id/price_breakdown"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="5dp"
+                android:visibility="gone"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/ride_price_title">
+
+                <TextView
+                    android:id="@+id/minimum"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentStart="true"
+                    android:layout_alignParentTop="true"
+                    android:layout_toStartOf="@+id/minimum_price"
+                    android:text="@string/minimum_fare"
+                    android:textColor="@color/gray_dark"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/minimum_price"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:layout_marginEnd="20dp"
+                    android:textColor="@color/gray_dark"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/per_KM"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_below="@id/minimum"
+                    android:layout_alignParentStart="true"
+                    android:layout_toStartOf="@+id/per_KM_price"
+                    android:text="@string/fare_per_km"
+                    android:textColor="@color/gray_dark"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/per_KM_price"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_below="@id/minimum_price"
+                    android:layout_alignParentEnd="true"
+                    android:layout_marginEnd="20dp"
+                    android:textColor="@color/gray_dark"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/discount"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_below="@+id/per_KM"
+                    android:layout_alignParentStart="true"
+                    android:layout_toStartOf="@+id/discount_percent"
+                    android:text="@string/discount"
+                    android:textColor="@color/gray_dark"
+                    android:textSize="12sp"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/discount_percent"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_below="@+id/per_KM_price"
+                    android:layout_alignParentEnd="true"
+                    android:layout_marginEnd="20dp"
+                    android:textColor="@color/gray_dark"
+                    android:textSize="12sp"
+                    android:visibility="gone" />
+
+                <View
+                    android:id="@+id/line"
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_below="@+id/discount"
+                    android:layout_marginVertical="5dp"
+                    android:layout_marginEnd="20dp"
+                    android:background="@color/gray_light" />
+
+                <TextView
+                    android:id="@+id/cost"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_below="@id/line"
+                    android:layout_alignParentStart="true"
+                    android:layout_toStartOf="@+id/cost_price"
+                    android:text="@string/ride_cost"
+                    android:textColor="@color/gray_dark"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/cost_price"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_below="@+id/line"
+                    android:layout_alignParentEnd="true"
+                    android:layout_marginEnd="20dp"
+                    android:textColor="@color/gray_dark"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/service"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_below="@+id/cost"
+                    android:layout_alignParentStart="true"
+                    android:layout_toStartOf="@+id/service_fee"
+                    android:text="@string/service_fee"
+                    android:textColor="@color/gray_dark"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/service_fee"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_below="@+id/cost_price"
+                    android:layout_alignParentEnd="true"
+                    android:layout_marginEnd="20dp"
+                    android:textColor="@color/gray_dark"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/total"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_below="@+id/service"
+                    android:layout_alignParentStart="true"
+                    android:layout_toStartOf="@+id/total_price"
+                    android:text="@string/final_price"
+                    android:textColor="@color/gray_dark"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/total_price"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_below="@+id/service_fee"
+                    android:layout_alignParentEnd="true"
+                    android:layout_marginEnd="20dp"
+                    android:textColor="@color/gray_dark"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+            </RelativeLayout>
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <RelativeLayout
+            android:id="@+id/passenger"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="20dp"
+            android:layout_marginBottom="10dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/passenger_title"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_alignParentStart="true"
+                android:layout_alignParentTop="true"
+                android:layout_toStartOf="@+id/passenger_count"
+                android:text="@string/passenger"
+                android:textColor="@color/blue"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/passenger_count"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentTop="true"
+                android:layout_alignParentEnd="true"
+                android:textColor="@color/blue"
+                android:textSize="13sp" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rv_passenger"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_below="@+id/passenger_title"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="5dp" />
+
+        </RelativeLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_complete"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="20dp"
+            android:layout_marginTop="5dp"
+            android:background="@drawable/box_blue_dark"
+            android:text="@string/finish_ride"
+            android:textColor="@color/white"
+            android:textSize="15sp"
+            android:visibility="gone"
+            app:backgroundTint="@null"
+            app:backgroundTintMode="@null" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_cancel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="20dp"
+            android:layout_marginTop="5dp"
+            android:background="@drawable/box_red"
+            android:text="@string/cancel_ride"
+            android:textColor="@color/white"
+            android:textSize="15sp"
+            app:backgroundTint="@null"
+            app:backgroundTintMode="@null" />
+
+    </LinearLayout>
+
+    <include
+        android:id="@+id/loading"
+        layout="@layout/progress_bar" />
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>
