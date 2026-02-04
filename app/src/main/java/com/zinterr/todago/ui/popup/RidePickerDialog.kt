@@ -3,12 +3,19 @@ package com.zinterr.todago.ui.popup
 import android.annotation.SuppressLint
 import android.app.*
 import android.content.Intent
+import android.graphics.Color
+import android.graphics.Typeface
 import android.os.Bundle
+import android.text.*
+import android.text.style.ForegroundColorSpan
+import android.text.style.StyleSpan
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.DialogFragment
 import androidx.core.graphics.drawable.toDrawable
 import com.google.android.gms.maps.model.LatLng
+import com.zinterr.todago.R
 import com.zinterr.todago.util.LocationPickerActivity
 import com.zinterr.todago.databinding.DialogRidePickerBinding
 import com.zinterr.todago.model.GeocodeResponse
@@ -46,6 +53,7 @@ class RidePickerDialog(
         dialog.setCanceledOnTouchOutside(false)
 
         setSliderListeners()
+        setupAgreement()
 
         binding.title.apply {
             if (type != null) {
@@ -132,5 +140,22 @@ class RidePickerDialog(
                 else -> "Large"
             }
         }
+    }
+
+    private fun setupAgreement() {
+        val text = "By proceeding, I agree to TodaGo's Terms and Privacy Policies"
+        val ss = SpannableString(text)
+        val startT = text.indexOf("Terms")
+        val endT = startT + "Terms".length
+        val startP = text.indexOf("Privacy")
+        val endP = text.length
+        ss.setSpan(ForegroundColorSpan(ContextCompat.getColor(requireContext(), R.color.blue_dark)),
+            startT, endT, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        ss.setSpan(StyleSpan(Typeface.BOLD_ITALIC), startT, endT, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        ss.setSpan(ForegroundColorSpan(ContextCompat.getColor(requireContext(), R.color.blue_dark)),
+            startP, endP, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        ss.setSpan(StyleSpan(Typeface.BOLD_ITALIC), startP, endP, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        binding.terms.text = ss
+        binding.terms.highlightColor = Color.TRANSPARENT
     }
 }

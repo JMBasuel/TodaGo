@@ -4,8 +4,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity.RESULT_OK
 import android.app.AlertDialog
-import android.content.Context
-import android.content.Intent
+import android.content.*
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.text.*
@@ -14,16 +13,18 @@ import androidx.fragment.app.Fragment
 import android.view.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
-import androidx.core.content.edit
-import androidx.core.graphics.toColorInt
+import androidx.core.content.*
 import androidx.core.net.toUri
+import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import com.google.firebase.Firebase
 import com.google.firebase.auth.*
 import com.google.firebase.auth.auth
 import com.google.firebase.database.*
 import com.google.firebase.remoteconfig.*
+import com.zinterr.todago.R
 import com.zinterr.todago.MainActivity
+import com.zinterr.todago.TodaGo
 import com.zinterr.todago.databinding.LoginBinding
 import com.zinterr.todago.model.*
 import com.zinterr.todago.model.Global.checkGPS
@@ -32,6 +33,7 @@ import com.zinterr.todago.model.Global.hideKeyboard
 import com.zinterr.todago.model.Global.isNotificationDisabled
 import com.zinterr.todago.ui.popup.ConfirmDialog
 import com.zinterr.todago.util.snackBar
+import com.zinterr.todago.viewmodel.SessionViewModel
 import java.util.UUID
 
 @SuppressLint("ClickableViewAccessibility")
@@ -40,6 +42,7 @@ class Login : Fragment() {
     private lateinit var binding: LoginBinding
     private lateinit var remoteConfig: FirebaseRemoteConfig
     private var confirmDialog: ConfirmDialog? = null
+    private lateinit var session: SessionViewModel
     private lateinit var dbRef: DatabaseReference
     private lateinit var auth: FirebaseAuth
     private var isAppValid: Boolean? = null
@@ -91,8 +94,8 @@ class Login : Fragment() {
         }
 
         binding.loading.progress.setIndicatorColor(
-            "#1561FF".toColorInt(),
-            "#FFBF0D3E".toColorInt())
+            ContextCompat.getColor(requireContext(), R.color.blue_dark),
+            ContextCompat.getColor(requireContext(), R.color.red))
 
         emailListener()
         passwordListener()
@@ -138,54 +141,68 @@ class Login : Fragment() {
         dbRef = Firebase.database.reference
         auth = Firebase.auth
         remoteConfig = Firebase.remoteConfig
+        session = ViewModelProvider((requireActivity().application as TodaGo),
+            ViewModelProvider.AndroidViewModelFactory
+                .getInstance((requireActivity().application as TodaGo)))[SessionViewModel::class.java]
     }
 
     private fun login() {
-        val isEmail = binding.emailContainer.helperText == null &&
-                binding.emailContainer.error == null
-        val isPass = binding.passwordContainer.helperText == null &&
-                binding.passwordContainer.error == null
-        val email = binding.emailEditText.text.toString()
-        val pass = binding.passwordEditText.text.toString()
-        if (isEmail && isPass) {
-            setupProgress("Logging in")
-            auth.signInWithEmailAndPassword(email, pass)
-                .addOnCompleteListener { task ->
-                    if (task.isSuccessful) {
-                        getAccount(task.result.user?.uid!!) { account ->
-                            if (account != null) {
-                                Global.account = account
-                                Global.deviceID = getDeviceID()
-                                dbRef.child("Account/TodaGo/${account.uid}/sessionID").setValue(Global.deviceID)
-                                    .addOnCompleteListener { task ->
-                                        if (task.isSuccessful) {
-                                            binding.loading.container.visibility = View.GONE
-                                            val intent = Intent(requireContext(), MainActivity::class.java)
-                                            startActivity(intent)
-                                            requireActivity().finish()
-                                        }
+        checkAppValidity {
+            if (isAppValid == true) {
+                val isEmail = binding.emailContainer.helperText == null &&
+                        binding.emailContainer.error == null
+                val isPass = binding.passwordContainer.helperText == null &&
+                        binding.passwordContainer.error == null
+                val email = binding.emailEditText.text.toString()
+                val pass = binding.passwordEditText.text.toString()
+                if (isEmail && isPass) {
+                    setupProgress("Logging in")
+                    auth.signInWithEmailAndPassword(email, pass)
+                        .addOnCompleteListener { task ->
+                            if (task.isSuccessful) {
+                                getAccount(task.result.user?.uid!!) { account ->
+                                    if (account != null) {
+                                        session.setAccount(account)
+                                        session.setDeviceID(getDeviceID())
+                                        dbRef.child("Account/TodaGo/${account.uid}/sessionID").setValue(session.deviceID.value)
+                                            .addOnCompleteListener { task ->
+                                                if (task.isSuccessful) {
+                                                    binding.loading.container.visibility = View.GONE
+                                                    val intent = Intent(requireContext(), MainActivity::class.java)
+                                                    startActivity(intent)
+                                                    requireActivity().finish()
+                                                }
+                                            }
+                                    } else {
+                                        auth.signOut()
+                                        binding.loading.container.visibility = View.GONE
+                                        snackBar(view, "Something went wrong")
                                     }
+                                }
                             } else {
-                                auth.signOut()
                                 binding.loading.container.visibility = View.GONE
-                                snackBar(view, "Something went wrong")
+                                snackBar(view, "Incorrect credentials")
                             }
                         }
-                    } else {
-                        binding.loading.container.visibility = View.GONE
-                        snackBar(view, "Incorrect credentials")
-                    }
+                } else if (isEmail) {
+                    if (binding.passwordContainer.error != "Incorrect password")
+                        binding.passwordContainer.error = "Minimum of 8 characters"
+                } else if (isPass) {
+                    binding.emailContainer.error = "Invalid email address"
+                } else {
+                    if (binding.passwordContainer.error != "Incorrect password")
+                        binding.passwordContainer.error = "Minimum of 8 characters"
+                    binding.emailContainer.error = "Invalid email address"
                 }
-        } else if (isEmail) {
-            if (binding.passwordContainer.error != "Incorrect password")
-                binding.passwordContainer.error = "Minimum of 8 characters"
-        } else if (isPass) {
-            binding.emailContainer.error = "Invalid email address"
-        } else {
-            if (binding.passwordContainer.error != "Incorrect password")
-                binding.passwordContainer.error = "Minimum of 8 characters"
-            binding.emailContainer.error = "Invalid email address"
+            } else AlertDialog.Builder(requireContext())
+                .setTitle("APP DISCONTINUED")
+                .setMessage("Sorry. This application has been discontinued by the administrator.")
+                .setPositiveButton("Understood") { _, _ ->
+                    requireActivity().finish()
+                }
+                .show()
         }
+
     }
 
     private fun getAccount(uid: String, onComplete: (Account?) -> Unit) {
@@ -258,9 +275,9 @@ class Login : Fragment() {
         if (auth.currentUser != null) {
             setupProgress("Logging in")
             getAccount(auth.currentUser?.uid!!) { account ->
-                Global.account = account
-                Global.deviceID = getDeviceID()
-                dbRef.child("Account/TodaGo/${account?.uid}/sessionID").setValue(Global.deviceID)
+                session.setAccount(account!!)
+                session.setDeviceID(getDeviceID())
+                dbRef.child("Account/TodaGo/${account.uid}/sessionID").setValue(session.deviceID.value)
                     .addOnCompleteListener { task ->
                         if (task.isSuccessful) {
                             binding.loading.container.visibility = View.GONE

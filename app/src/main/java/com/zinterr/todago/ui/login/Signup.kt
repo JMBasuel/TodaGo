@@ -5,8 +5,12 @@ import android.annotation.SuppressLint
 import android.app.*
 import android.content.*
 import android.content.pm.PackageManager
+import android.graphics.Color
+import android.graphics.Typeface
 import android.os.*
 import android.text.*
+import android.text.method.LinkMovementMethod
+import android.text.style.ClickableSpan
 import android.util.Patterns
 import androidx.fragment.app.Fragment
 import android.view.*
@@ -14,9 +18,9 @@ import android.widget.*
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
-import androidx.core.content.edit
-import androidx.core.graphics.toColorInt
+import androidx.core.content.*
 import androidx.core.view.*
+import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import com.google.android.gms.maps.model.LatLng
 import com.google.firebase.Firebase
@@ -26,6 +30,7 @@ import com.google.firebase.remoteconfig.*
 import com.google.firebase.storage.*
 import com.google.gson.Gson
 import com.zinterr.todago.*
+import com.zinterr.todago.R
 import com.zinterr.todago.databinding.SignupBinding
 import com.zinterr.todago.model.Global.setOnDebouncedClickListener
 import com.zinterr.todago.model.*
@@ -33,6 +38,7 @@ import com.zinterr.todago.model.Global.hideKeyboard
 import com.zinterr.todago.model.Global.toLocalAddress
 import com.zinterr.todago.network.RetrofitClient
 import com.zinterr.todago.util.*
+import com.zinterr.todago.viewmodel.SessionViewModel
 import org.json.*
 import retrofit2.*
 import java.util.UUID
@@ -43,6 +49,7 @@ class Signup : Fragment() {
 
     private lateinit var binding: SignupBinding
     private lateinit var remoteConfig: FirebaseRemoteConfig
+    private lateinit var session: SessionViewModel
     private lateinit var dbRef: DatabaseReference
     private lateinit var stRef: StorageReference
     private lateinit var auth: FirebaseAuth
@@ -58,7 +65,7 @@ class Signup : Fragment() {
     private val scanQR = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) verify(result.data) }
     private val getLocation = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == Activity.RESULT_OK) { if (Global.key == null) fetchAPI { showData(result.data)
+        if (result.resultCode == Activity.RESULT_OK) { if (session.key.value == null) fetchAPI { showData(result.data)
         } else showData(result.data) } }
     private val requestPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) scan() else requireCamera() }
@@ -90,6 +97,7 @@ class Signup : Fragment() {
         emailListener()
         passwordListener()
         phoneListener()
+        setupAgreement()
         fetchAPI()
 
         binding.root.setOnTouchListener { _, event ->
@@ -104,8 +112,8 @@ class Signup : Fragment() {
         }
 
         binding.loading.progress.setIndicatorColor(
-            "#1561FF".toColorInt(),
-            "#FFBF0D3E".toColorInt())
+            ContextCompat.getColor(requireContext(), R.color.blue_dark),
+            ContextCompat.getColor(requireContext(), R.color.red))
 
         binding.btnBack.setOnClickListener {
             findNavController().popBackStack()
@@ -119,6 +127,10 @@ class Signup : Fragment() {
             scanID()
         }
 
+        binding.agree.setOnCheckedChangeListener { _, isChecked ->
+            binding.btnSign.isEnabled = isChecked
+        }
+
         binding.btnSign.setOnDebouncedClickListener {
             signUp()
         }
@@ -129,14 +141,17 @@ class Signup : Fragment() {
         remoteConfig = Firebase.remoteConfig
         stRef = Firebase.storage.reference
         auth = Firebase.auth
+        session = ViewModelProvider((requireActivity().application as TodaGo),
+            ViewModelProvider.AndroidViewModelFactory
+                .getInstance((requireActivity().application as TodaGo)))[SessionViewModel::class.java]
     }
 
     private fun fetchAPI(onComplete: (() -> Unit)? = null) {
         setupProgress("")
         remoteConfig.fetchAndActivate().addOnCompleteListener(requireActivity()) { task ->
             if (task.isSuccessful) {
-                Global.key = remoteConfig.getString("maps_api_key")
-                Global.fee = remoteConfig.getDouble("service_fee")
+                session.setKey(remoteConfig.getString("maps_api_key"))
+                session.setFee(remoteConfig.getDouble("service_fee"))
             }
             endProgress()
             onComplete?.invoke()
@@ -155,9 +170,9 @@ class Signup : Fragment() {
                             location, email, if (verified) 2.5F else 0F, if (verified) 1 else 0, verified, false)
                         dbRef.child("Account/TodaGo/$uid").setValue(account)
                             .addOnSuccessListener {
-                                Global.account = account
-                                Global.deviceID = getDeviceID()
-                                dbRef.child("Account/TodaGo/${account.uid}/sessionID").setValue(Global.deviceID)
+                                session.setAccount(account)
+                                session.setDeviceID(getDeviceID())
+                                dbRef.child("Account/TodaGo/${account.uid}/sessionID").setValue(session.deviceID.value)
                                     .addOnCompleteListener { task ->
                                         if (task.isSuccessful) {
                                             endProgress()
@@ -201,7 +216,7 @@ class Signup : Fragment() {
 
     private fun getAddress() {
         val intent = Intent(requireContext(), LocationPickerActivity::class.java)
-        if (Global.key == null) fetchAPI {
+        if (session.key.value == null) fetchAPI {
             getLocation.launch(intent)
         } else getLocation.launch(intent)
     }
@@ -211,7 +226,7 @@ class Signup : Fragment() {
         val latitude = data?.getDoubleExtra("LATITUDE", 0.0)
         val longitude = data?.getDoubleExtra("LONGITUDE", 0.0)
         latLng = LatLng(latitude!!, longitude!!)
-        RetrofitClient.geocodeService.reverseGeocode("$latitude,$longitude", Global.key!!)
+        RetrofitClient.geocodeService.reverseGeocode("$latitude,$longitude", session.key.value!!)
             .enqueue(object : Callback<GeocodeResponse> {
                 override fun onResponse(call: Call<GeocodeResponse?>, response: Response<GeocodeResponse?>) {
                     if (response.isSuccessful) {
@@ -344,6 +359,36 @@ class Signup : Fragment() {
                 } else binding.phone.error = "Required"
             } else binding.phone.error = "Required"
         }
+    }
+
+    private fun setupAgreement() {
+        val text = "I agree to TodaGo's Terms and Privacy Policies"
+        val ss = SpannableString(text)
+        val startT = text.indexOf("Terms")
+        val endT = startT + "Terms".length
+        val startP = text.indexOf("Privacy")
+        val endP = text.length
+        ss.setSpan(object : ClickableSpan() {
+            override fun onClick(widget: View) {
+                findNavController().navigate(SignupDirections.actionSignupCommuterToTerms())
+            }
+            override fun updateDrawState(ds: TextPaint) {
+                ds.color = ContextCompat.getColor(requireContext(), R.color.blue_dark)
+                ds.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD_ITALIC)
+            }
+        }, startT, endT, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        ss.setSpan(object : ClickableSpan() {
+            override fun onClick(widget: View) {
+                findNavController().navigate(SignupDirections.actionSignupCommuterToPolicy())
+            }
+            override fun updateDrawState(ds: TextPaint) {
+                ds.color = ContextCompat.getColor(requireContext(), R.color.blue_dark)
+                ds.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD_ITALIC)
+            }
+        }, startP, endP, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        binding.terms.text = ss
+        binding.terms.movementMethod = LinkMovementMethod.getInstance()
+        binding.terms.highlightColor = Color.TRANSPARENT
     }
 
     private fun setupProgress(message: String) {

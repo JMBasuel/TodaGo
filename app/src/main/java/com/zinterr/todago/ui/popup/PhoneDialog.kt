@@ -5,12 +5,13 @@ import android.app.*
 import android.os.Bundle
 import android.util.Patterns
 import android.view.*
+import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toDrawable
-import androidx.core.graphics.toColorInt
 import androidx.fragment.app.DialogFragment
 import com.google.firebase.Firebase
 import com.google.firebase.auth.*
 import com.google.firebase.database.*
+import com.zinterr.todago.R
 import com.zinterr.todago.databinding.DialogPhoneBinding
 import com.zinterr.todago.model.Global.hideKeyboard
 import com.zinterr.todago.model.Global.setOnDebouncedClickListener
@@ -44,8 +45,8 @@ class PhoneDialog(
         }
 
         binding.loading.progress.setIndicatorColor(
-            "#15B34E".toColorInt(),
-            "#D9BD2D".toColorInt())
+            ContextCompat.getColor(requireContext(), R.color.blue_dark),
+            ContextCompat.getColor(requireContext(), R.color.red))
 
         phoneListener()
 

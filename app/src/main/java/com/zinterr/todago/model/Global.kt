@@ -23,12 +23,7 @@ object Global {
     const val VERSION = "1.0.0"
     var historyPrev: String? = null
     private var lastClickTime = 0L
-    var deviceID: String? = null
-    var account: Account? = null
     var navPosition: Int = 0
-    var city: String? = null
-    var key: String? = null
-    var fee: Double? = null
     var app: App? = null
 
     fun View.setOnDebouncedClickListener(interval: Long = 750, onClick: (View) -> Unit) {

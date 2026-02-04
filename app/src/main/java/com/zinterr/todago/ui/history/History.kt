@@ -4,8 +4,9 @@ import android.annotation.SuppressLint
 import android.os.*
 import androidx.fragment.app.Fragment
 import android.view.*
-import androidx.core.graphics.toColorInt
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.firebase.Firebase
 import com.google.firebase.database.*
@@ -16,8 +17,9 @@ import com.zinterr.todago.model.History
 import com.zinterr.todago.ui.home.Home
 import com.zinterr.todago.util.*
 import com.zinterr.todago.R
+import com.zinterr.todago.TodaGo
 import com.zinterr.todago.viewholder.HistoryViewHolder
-import com.zinterr.todago.viewmodel.CurrentViewViewModel
+import com.zinterr.todago.viewmodel.*
 import kotlin.getValue
 
 @SuppressLint("SetTextI18n")
@@ -26,6 +28,7 @@ class History : Fragment(), HistoryClickListener {
     private lateinit var binding: HistoryBinding
     private val currentViewViewModel: CurrentViewViewModel by activityViewModels()
     private lateinit var historyAdapter: HistoryAdapter
+    private lateinit var session: SessionViewModel
     private lateinit var dbRef: DatabaseReference
     private lateinit var account: Account
 
@@ -46,8 +49,8 @@ class History : Fragment(), HistoryClickListener {
         super.onViewCreated(view, savedInstanceState)
 
         binding.loading.progress.setIndicatorColor(
-            "#1561FF".toColorInt(),
-            "#FFBF0D3E".toColorInt())
+            ContextCompat.getColor(requireContext(), R.color.blue_dark),
+            ContextCompat.getColor(requireContext(), R.color.red))
 
         binding.rvHistory.apply {
             setHasFixedSize(true)
@@ -73,7 +76,10 @@ class History : Fragment(), HistoryClickListener {
     }
 
     private fun initialize() {
-        account = Global.account!!
+        session = ViewModelProvider((requireActivity().application as TodaGo),
+            ViewModelProvider.AndroidViewModelFactory
+                .getInstance((requireActivity().application as TodaGo)))[SessionViewModel::class.java]
+        account = session.account.value!!
         dbRef = Firebase.database.reference
     }
 

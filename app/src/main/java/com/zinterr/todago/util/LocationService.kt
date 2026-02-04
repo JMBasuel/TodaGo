@@ -41,11 +41,15 @@ class LocationService: Service() {
     private var rideRef: DatabaseReference? = null
     private var currentRideUID: String? = null
     private var currentCity: String? = null
+    private var discount: Boolean? = null
     private var driver: Driver? = null
+    private var fee: Double? = null
+    private var key: String? = null
     private var total: Int? = null
 
     companion object {
         var instance: LocationService? = null
+        lateinit var prefs: SharedPreferences
         private var appInForeground = true
         const val EXTRA_CITY = "CITY"
         const val EXTRA_RIDE_UID = "RIDE_UID"
@@ -55,14 +59,19 @@ class LocationService: Service() {
             instance = service
         }
 
-        fun startService(context: Context, city: String, rideUID: String) {
-            if (instance == null) {
+        fun startService(context: Context, city: String, rideUID: String, discount: Boolean) {
+            prefs = context.getSharedPreferences("session_prefs", MODE_PRIVATE)
+            prefs.edit().putBoolean("appInForeground", true)
+                .putBoolean("discount", discount)
+                .apply()
+            if (instance != null) instance?.stopLocationService()
+            Handler(Looper.getMainLooper()).postDelayed({
                 val intent = Intent(context, LocationService::class.java).apply {
                     putExtra(EXTRA_CITY, city)
                     putExtra(EXTRA_RIDE_UID, rideUID)
                 }
                 ContextCompat.startForegroundService(context, intent)
-            }
+            }, 0)
         }
 
         fun stopService() {
@@ -70,15 +79,18 @@ class LocationService: Service() {
         }
 
         fun setAppInForeground(foreground: Boolean) {
-            appInForeground = foreground
-            if (!foreground) {
-                instance?.currentCity?.let { city ->
-                    instance?.currentRideUID?.let { rideUID ->
-                        instance?.startRideMonitor(city, rideUID)
+            if (instance != null) {
+                appInForeground = foreground
+                prefs.edit().putBoolean("appInForeground", foreground).apply()
+                if (!foreground) {
+                    instance?.currentCity?.let { city ->
+                        instance?.currentRideUID?.let { rideUID ->
+                            instance?.startRideMonitor(city, rideUID)
+                        }
                     }
-                }
-            } else if (instance?.rideEventListener != null)
-                instance?.rideRef?.removeEventListener(instance?.rideEventListener!!)
+                } else if (instance?.rideEventListener != null)
+                    instance?.rideRef?.removeEventListener(instance?.rideEventListener!!)
+            }
         }
 
         fun startLocationUpdates() {
@@ -98,12 +110,14 @@ class LocationService: Service() {
         super.onCreate()
         bind(this)
         createNotificationChannel()
-        fetchApi {}
+        fetchAPI()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val city = intent?.getStringExtra(EXTRA_CITY)
         val rideUID = intent?.getStringExtra(EXTRA_RIDE_UID)
+        appInForeground = prefs.getBoolean("appInForeground", false)
+        discount = prefs.getBoolean("discount", false)
         if (city != null && rideUID != null) {
             currentCity = city
             currentRideUID = rideUID
@@ -146,11 +160,11 @@ class LocationService: Service() {
                     }
                     override fun onFailure(call: Call<GeocodeResponse?>, t: Throwable) {}
                 }
-                if (Global.key == null) fetchApi {
-                    geocodeCall = RetrofitClient.geocodeService.reverseGeocode(latLng.toLatLngString(), Global.key!!)
+                if (key == null) fetchAPI {
+                    geocodeCall = RetrofitClient.geocodeService.reverseGeocode(latLng.toLatLngString(), key!!)
                     geocodeCall?.enqueue(geocodeResponse!!)
                 } else {
-                    geocodeCall = RetrofitClient.geocodeService.reverseGeocode(latLng.toLatLngString(), Global.key!!)
+                    geocodeCall = RetrofitClient.geocodeService.reverseGeocode(latLng.toLatLngString(), key!!)
                     geocodeCall?.enqueue(geocodeResponse!!)
                 }
             }
@@ -189,10 +203,10 @@ class LocationService: Service() {
         }
     }
 
-    private fun fetchApi(onComplete: () -> Unit) {
+    private fun fetchAPI(onComplete: (() -> Unit)? = null) {
         remoteConfig.fetchAndActivate().addOnCompleteListener { task ->
-            if (task.isSuccessful) Global.key = remoteConfig.getString("maps_api_key")
-            onComplete()
+            if (task.isSuccessful) key = remoteConfig.getString("maps_api_key")
+            onComplete?.invoke()
         }
     }
 
@@ -222,17 +236,17 @@ class LocationService: Service() {
             val serviceFee = getServiceFee(commuter, cost.first)
             total = (rideCost + (if (isSpecial(ride, commuter.distance)) 0F else (cost.first * (commuter.passenger!! - 1))) + serviceFee).roundToInt()
             if (ride.commuter.getOrDefault(uid, null)?.price != total)
-                dbRef.child("Ride/${Global.city}/Rides/${ride.uid}/commuter/$uid/price")
+                dbRef.child("Ride/$currentCity/Rides/${ride.uid}/commuter/$uid/price")
                     .setValue(total)
         }
     }
 
-    private fun getServiceFee(commuter: Commuter, cost: Float): Int = ((cost * commuter.passenger!!) * (Global.fee!!/100))
+    private fun getServiceFee(commuter: Commuter, cost: Float): Int = ((cost * commuter.passenger!!) * (fee!!/100))
         .roundToInt().coerceAtLeast(1)
 
     private fun getRideCost(ride: Ride, distance: Int): Pair<Float, Float> {
         val perKM = if (isSpecial(ride, distance)) ride.driver!!.matrix?.specialPerKM else ride.driver!!.matrix?.perKm
-        val discount = if (Global.account?.discount != null) ride.driver.matrix?.discount else 0
+        val discount = if (discount == true) ride.driver.matrix?.discount else 0
         val discounted = ((distance/1000F) * perKM!!) * discount!!
         return Pair(((distance/1000F) * perKM).coerceAtLeast(if (isSpecial(ride, distance)) 100F else 40F),
             discounted)
@@ -273,7 +287,7 @@ class LocationService: Service() {
             } else stopLocationUpdates()
             val commuters = ride.commuter.values.filter { it.status!!.contains("ACTIVE") }
             if (commuters.isNotEmpty() && commuters.all { it.status!!.contains("DRIVING") } && ride.status?.contains("DRIVING") == false) {
-                dbRef.child("Ride/${Global.city}/Rides/${ride.uid}/status")
+                dbRef.child("Ride/$currentCity/Rides/${ride.uid}/status")
                     .runTransaction(object : Transaction.Handler {
                         override fun doTransaction(currentData: MutableData): Transaction.Result {
                             currentData.getValue(String::class.java)?.contains("DRIVING")?.let {
@@ -309,7 +323,7 @@ class LocationService: Service() {
     }
 
     private fun setCommuterStatus(rideUID: String, status: String) {
-        dbRef.child("Ride/${Global.city}/Rides/$rideUID/commuter/$uid/status")
+        dbRef.child("Ride/$currentCity/Rides/$rideUID/commuter/$uid/status")
             .runTransaction(object : Transaction.Handler {
                 override fun doTransaction(currentData: MutableData): Transaction.Result {
                     currentData.getValue(String::class.java)?.contains(status)?.let {

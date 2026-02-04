@@ -11,12 +11,15 @@ import android.os.*
 import android.view.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
-import androidx.core.graphics.toColorInt
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.*
+import androidx.lifecycle.ViewModelProvider
 import com.google.android.gms.maps.model.LatLng
 import com.google.firebase.Firebase
 import com.google.firebase.database.*
 import com.google.firebase.remoteconfig.*
+import com.zinterr.todago.R
+import com.zinterr.todago.TodaGo
 import com.zinterr.todago.databinding.CommuterBinding
 import com.zinterr.todago.model.*
 import com.zinterr.todago.model.Commuter
@@ -45,9 +48,10 @@ class Commuter : Fragment() {
     private lateinit var binding: CommuterBinding
     private val currentViewViewModel: CurrentViewViewModel by activityViewModels()
     private val verifiedViewModel: VerifiedViewModel by activityViewModels()
-    private val rideViewModel: RideViewModel by activityViewModels()
     private lateinit var remoteConfig: FirebaseRemoteConfig
     private var ridePickerDialog: RidePickerDialog? = null
+    private lateinit var rideViewModel: RideViewModel
+    private lateinit var session: SessionViewModel
     private lateinit var dbRef: DatabaseReference
     private var infoDialog: InfoDialog? = null
     private lateinit var account: Account
@@ -81,8 +85,8 @@ class Commuter : Fragment() {
         fetchAPI { checkActiveBooking() }
 
         binding.loading.progress.setIndicatorColor(
-            "#1561FF".toColorInt(),
-            "#FFBF0D3E".toColorInt())
+            ContextCompat.getColor(requireContext(), R.color.blue_dark),
+            ContextCompat.getColor(requireContext(), R.color.red))
 
         if (account.emailVerified == false)
             verifiedViewModel.isVerified.observe(viewLifecycleOwner) { verified ->
@@ -125,15 +129,21 @@ class Commuter : Fragment() {
     private fun initialize() {
         dbRef = Firebase.database.reference
         remoteConfig = Firebase.remoteConfig
-        account = Global.account!!
+        rideViewModel = ViewModelProvider((requireActivity().application as TodaGo),
+            ViewModelProvider.AndroidViewModelFactory
+                .getInstance((requireActivity().application as TodaGo)))[RideViewModel::class.java]
+        session = ViewModelProvider((requireActivity().application as TodaGo),
+            ViewModelProvider.AndroidViewModelFactory
+                .getInstance((requireActivity().application as TodaGo)))[SessionViewModel::class.java]
+        account = session.account.value!!
     }
 
     private fun fetchAPI(onComplete: (() -> Unit)? = null) {
         setupProgress("Loading data")
         remoteConfig.fetchAndActivate().addOnCompleteListener(requireActivity()) { task ->
             if (task.isSuccessful) {
-                Global.key = remoteConfig.getString("maps_api_key")
-                Global.fee = remoteConfig.getDouble("service_fee")
+                session.setKey(remoteConfig.getString("maps_api_key"))
+                session.setFee(remoteConfig.getDouble("service_fee"))
             }
             endProgress()
             onComplete?.invoke()
@@ -153,7 +163,7 @@ class Commuter : Fragment() {
     }
 
     private fun getRides() {
-        dbRef.child("Ride/${Global.city}/Rides").addListenerForSingleValueEvent(
+        dbRef.child("Ride/${session.city.value}/Rides").addListenerForSingleValueEvent(
             object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     if (snapshot.exists()) {
@@ -161,9 +171,9 @@ class Commuter : Fragment() {
                             val ride = item.getValue(Ride::class.java)!!
                             if (ride.commuter?.containsKey(account.uid!!) == true) {
                                 // NEED TO CHECK FOR COMPLETED RIDE IN CASE BOTH COMMUTER AND DRIVER GOES OFFLINE DURING THE RIDE
-                                if (ride.uid == null) dbRef.child("Ride/${Global.city}/Rides/${item.key}").setValue(null)
+                                if (ride.uid == null) dbRef.child("Ride/${session.city.value}/Rides/${item.key}").setValue(null)
                                 else if (ride.commuter.getValue(account.uid!!).status!!.contains("ACTIVE")) {
-                                    if (isRideOld(ride)) dbRef.child("Ride/${Global.city}/Rides/${ride.uid}").setValue(null)
+                                    if (isRideOld(ride)) dbRef.child("Ride/${session.city.value}/Rides/${ride.uid}").setValue(null)
                                         .addOnCompleteListener { task ->
                                             if (task.isSuccessful) {
                                                 infoDialog = InfoDialog("Sorry. Your booking has exceeded waiting time and expired.")
@@ -171,9 +181,9 @@ class Commuter : Fragment() {
                                             }
                                         }
                                     else {
-                                        rideViewModel.setRidePath(Global.city!!, ride.uid)
+                                        rideViewModel.setRidePath(session.city.value!!, ride.uid)
                                         LocationService.startService(requireContext(),
-                                            Global.city!!, ride.uid)
+                                            session.city.value!!, ride.uid, session.account.value?.discount != null)
                                     }
                                 }
                             }
@@ -196,11 +206,11 @@ class Commuter : Fragment() {
     }
 
     private fun getCity(latLng: LatLng, onComplete: (Boolean) -> Unit) {
-        RetrofitClient.geocodeService.reverseGeocode(latLng.toLatLngString(), Global.key!!)
+        RetrofitClient.geocodeService.reverseGeocode(latLng.toLatLngString(), session.key.value!!)
             .enqueue(object : Callback<GeocodeResponse> {
                 override fun onResponse(call: Call<GeocodeResponse?>, response: Response<GeocodeResponse?>) {
                     if (response.isSuccessful) {
-                        Global.city = response.body()?.toLocalAddress()!!.city
+                        session.setCity(response.body()?.toLocalAddress()!!.city!!)
                         onComplete(true)
                     } else onComplete(false)
                 }
@@ -215,7 +225,7 @@ class Commuter : Fragment() {
         if (ActivityCompat.checkSelfPermission(requireContext(),
                 Manifest.permission.ACCESS_FINE_LOCATION) ==
             PackageManager.PERMISSION_GRANTED) {
-            ridePickerDialog = RidePickerDialog(Global.key!!) { city, origin, originAddress, destination, destinationAddress, count, baggage, current ->
+            ridePickerDialog = RidePickerDialog(session.key.value!!) { city, origin, originAddress, destination, destinationAddress, count, baggage, current ->
                 fetchRoute(origin, destination) { route ->
                     val leg = route.legs.firstOrNull()
                     checkShareRides(city) { rides ->
@@ -290,7 +300,7 @@ class Commuter : Fragment() {
                 if (error != null) snackBar(view, "Error: ${error.message}")
                 else if (committed) {
                     rideViewModel.setRidePath(city, uid)
-                    LocationService.startService(requireContext(), city, uid)
+                    LocationService.startService(requireContext(), city, uid, session.account.value?.discount != null)
                     val intent = Intent(requireContext(), RideActivity::class.java)
                     startActivity(intent)
                 } else setRide(ref, ride, city)
@@ -334,7 +344,7 @@ class Commuter : Fragment() {
         if (ActivityCompat.checkSelfPermission(requireContext(),
                 Manifest.permission.ACCESS_FINE_LOCATION) ==
             PackageManager.PERMISSION_GRANTED) {
-            ridePickerDialog = RidePickerDialog(Global.key!!, "SOLO") { city, origin, originAddress, destination, destinationAddress, count, baggage, current ->
+            ridePickerDialog = RidePickerDialog(session.key.value!!, "SOLO") { city, origin, originAddress, destination, destinationAddress, count, baggage, current ->
                 fetchRoute(origin, destination) { route ->
                     val leg = route.legs.firstOrNull()
                     val ref = dbRef.child("Ride/$city/Rides").push()
@@ -382,7 +392,7 @@ class Commuter : Fragment() {
             endProgress()
             if (task.isSuccessful) {
                 rideViewModel.setRidePath(city, ride.uid!!)
-                LocationService.startService(requireContext(), city, ride.uid)
+                LocationService.startService(requireContext(), city, ride.uid, session.account.value?.discount != null)
                 val intent = Intent(requireContext(), RideActivity::class.java)
                 startActivity(intent)
             } else snackBar(view, "Error: ${task.exception!!.message}")
@@ -406,7 +416,7 @@ class Commuter : Fragment() {
             val serviceFee = getServiceFee(commuter, cost.first)
             total = (rideCost + (if (isSpecial(ride, commuter.distance)) 0F else (cost.first * (commuter.passenger!! - 1))) + serviceFee).roundToInt()
             if (ride.commuter.getOrDefault(account.uid!!, null)?.price != total)
-                dbRef.child("Ride/${Global.city}/Rides/${ride.uid}/commuter/${account.uid}/price")
+                dbRef.child("Ride/${session.city.value}/Rides/${ride.uid}/commuter/${account.uid}/price")
                     .runTransaction(object : Transaction.Handler {
                         override fun doTransaction(currentData: MutableData): Transaction.Result {
                             currentData.getValue(Int::class.java)?.let {
@@ -420,7 +430,7 @@ class Commuter : Fragment() {
         }
     }
 
-    private fun getServiceFee(commuter: Commuter, cost: Float): Int = ((cost * commuter.passenger!!) * (Global.fee!!/100))
+    private fun getServiceFee(commuter: Commuter, cost: Float): Int = ((cost * commuter.passenger!!) * (session.fee.value!!/100))
         .roundToInt().coerceAtLeast(1)
 
     private fun getRideCost(ride: Ride, distance: Int): Pair<Float, Float> {
@@ -441,7 +451,7 @@ class Commuter : Fragment() {
             else LocationService.stopLocationUpdates()
             val commuters = ride.commuter.values.filter { it.status!!.contains("ACTIVE") }
             if (commuters.isNotEmpty() && commuters.all { it.status!!.contains("DRIVING") } && ride.status?.contains("DRIVING") == false) {
-                dbRef.child("Ride/${Global.city}/Rides/${ride.uid}/status")
+                dbRef.child("Ride/${session.city.value}/Rides/${ride.uid}/status")
                     .runTransaction(object : Transaction.Handler {
                         override fun doTransaction(currentData: MutableData): Transaction.Result {
                             currentData.getValue(String::class.java)?.contains("DRIVING")?.let {
@@ -479,7 +489,7 @@ class Commuter : Fragment() {
     }
 
     private fun setCommuterStatus(uid: String, status: String) {
-        dbRef.child("Ride/${Global.city}/Rides/$uid/commuter/${account.uid}/status")
+        dbRef.child("Ride/${session.city.value}/Rides/$uid/commuter/${account.uid}/status")
             .runTransaction(object : Transaction.Handler {
                 override fun doTransaction(currentData: MutableData): Transaction.Result {
                     currentData.getValue(String::class.java)?.contains(status)?.let {
@@ -565,7 +575,7 @@ class Commuter : Fragment() {
     private fun fetchRoute(origin: LatLng, destination: LatLng, onComplete: (Route) -> Unit) {
         setupProgress("Calculating your route")
         RetrofitClient.directionsService.getDirections(origin.toLatLngString(),
-            destination.toLatLngString(), Global.key!!)
+            destination.toLatLngString(), session.key.value!!)
             .enqueue(object : Callback<DirectionsResponse> {
                 override fun onResponse(call: Call<DirectionsResponse>, response: Response<DirectionsResponse>) {
                     if (response.isSuccessful) {

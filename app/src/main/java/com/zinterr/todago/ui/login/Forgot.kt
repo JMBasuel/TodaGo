@@ -5,7 +5,7 @@ import android.os.Bundle
 import android.util.Patterns
 import androidx.fragment.app.Fragment
 import android.view.*
-import androidx.core.graphics.toColorInt
+import androidx.core.content.ContextCompat
 import androidx.navigation.fragment.findNavController
 import com.google.firebase.Firebase
 import com.google.firebase.auth.*
@@ -13,6 +13,7 @@ import com.zinterr.todago.databinding.ForgotBinding
 import com.zinterr.todago.model.Global.hideKeyboard
 import com.zinterr.todago.model.Global.setOnDebouncedClickListener
 import com.zinterr.todago.util.snackBar
+import com.zinterr.todago.R
 
 @SuppressLint("ClickableViewAccessibility, SetTextI18n")
 class Forgot : Fragment() {
@@ -46,8 +47,8 @@ class Forgot : Fragment() {
         }
 
         binding.loading.progress.setIndicatorColor(
-            "#1561FF".toColorInt(),
-            "#FFBF0D3E".toColorInt())
+            ContextCompat.getColor(requireContext(), R.color.blue_dark),
+            ContextCompat.getColor(requireContext(), R.color.red))
 
         binding.btnBack.setOnClickListener {
             findNavController().popBackStack()

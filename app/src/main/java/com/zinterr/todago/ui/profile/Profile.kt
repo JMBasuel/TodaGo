@@ -10,7 +10,7 @@ import androidx.fragment.app.Fragment
 import android.view.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
-import androidx.core.graphics.toColorInt
+import androidx.core.content.ContextCompat
 import com.google.firebase.Firebase
 import com.google.firebase.auth.*
 import com.google.firebase.database.*
@@ -22,8 +22,10 @@ import com.zinterr.todago.model.*
 import com.zinterr.todago.model.Global.setOnDebouncedClickListener
 import androidx.core.view.isGone
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.ViewModelProvider
 import com.google.firebase.remoteconfig.*
 import com.google.gson.Gson
+import com.zinterr.todago.TodaGo
 import com.zinterr.todago.model.Global.toLocalAddress
 import com.zinterr.todago.network.RetrofitClient
 import com.zinterr.todago.ui.home.Home
@@ -41,10 +43,11 @@ class Profile : Fragment() {
     private lateinit var binding: ProfileBinding
     private val currentViewViewModel: CurrentViewViewModel by activityViewModels()
     private val viewModel: VerifiedViewModel by activityViewModels()
-    private val rideViewModel: RideViewModel by activityViewModels()
     private lateinit var remoteConfig: FirebaseRemoteConfig
     private var passwordDialog: PasswordDialog? = null
+    private lateinit var rideViewModel: RideViewModel
     private var confirmDialog: ConfirmDialog? = null
+    private lateinit var session: SessionViewModel
     private lateinit var dbRef: DatabaseReference
     private var phoneDialog: PhoneDialog? = null
     private lateinit var stRef: StorageReference
@@ -84,8 +87,8 @@ class Profile : Fragment() {
         }
 
         binding.loading.progress.setIndicatorColor(
-            "#1561FF".toColorInt(),
-            "#FFBF0D3E".toColorInt())
+            ContextCompat.getColor(requireContext(), R.color.blue_dark),
+            ContextCompat.getColor(requireContext(), R.color.red))
 
         binding.btnEditEmail.setOnDebouncedClickListener {
             editEmail()
@@ -142,8 +145,14 @@ class Profile : Fragment() {
     }
 
     private fun initialize() {
-        account = Global.account!!
+        session = ViewModelProvider((requireActivity().application as TodaGo),
+            ViewModelProvider.AndroidViewModelFactory
+                .getInstance((requireActivity().application as TodaGo)))[SessionViewModel::class.java]
+        account = session.account.value!!
         auth = Firebase.auth
+        rideViewModel = ViewModelProvider((requireActivity().application as TodaGo),
+            ViewModelProvider.AndroidViewModelFactory
+                .getInstance((requireActivity().application as TodaGo)))[RideViewModel::class.java]
         remoteConfig = Firebase.remoteConfig
         dbRef = Firebase.database.reference
         stRef = Firebase.storage.reference
@@ -153,8 +162,8 @@ class Profile : Fragment() {
         setupProgress("Loading data")
         remoteConfig.fetchAndActivate().addOnCompleteListener(requireActivity()) { task ->
             if (task.isSuccessful) {
-                Global.key = remoteConfig.getString("maps_api_key")
-                Global.fee = remoteConfig.getDouble("service_fee")
+                session.setKey(remoteConfig.getString("maps_api_key"))
+                session.setFee(remoteConfig.getDouble("service_fee"))
             }
             onComplete?.invoke()
         }
@@ -172,7 +181,10 @@ class Profile : Fragment() {
             .addOnCompleteListener {
                 auth.currentUser!!.email.let {
                     if (it != account.email) {
-                        Global.account!!.email = it
+                        session.account.value?.let { acc ->
+                            acc.email = it
+                            session.setAccount(acc)
+                        }
                         account.email == it
                         dbRef.child("Account/TodaGo/${account.uid}/email").setValue(it)
                     }
@@ -204,12 +216,15 @@ class Profile : Fragment() {
                                             }
                                             emailVerified = true
                                         }
-                                        Global.account!!.apply {
-                                            if (rates!! < 2) {
-                                                rating = if (rates == 1) rating!! + 5F else 2.5F
-                                                rates = rates!! + 1
+                                        session.account.value?.let { acc ->
+                                            acc.apply {
+                                                if ((rates ?: 0) < 2) {
+                                                    rating = if ((rates ?: 0) == 1) (rating ?: 0f) + 5f else 2.5f
+                                                    rates = (rates ?: 0) + 1
+                                                }
+                                                emailVerified = true
                                             }
-                                            emailVerified = true
+                                            session.setAccount(acc)
                                         }
                                         binding.stars.rating = account.rating!!/account.rates!!.toFloat()
                                         binding.rating.text = "${if ((account.rating!!/account.rates!!.toFloat()).isNaN()) 0F else account.rating!!/account.rates!!.toFloat()} (${account.rates})"
@@ -284,13 +299,16 @@ class Profile : Fragment() {
                         ) {
                             if (error != null) snackBar(view, "Error: ${error.message}")
                             else if (committed) {
-                                Global.account!!.apply {
-                                    name = "$first $last"
-                                    if (rates!! < 2) {
-                                        rating = if (rates == 1) rating!! + 5F else 2.5F
-                                        rates = rates!! + 1
+                                session.account.value?.let { acc ->
+                                    acc.apply {
+                                        name = "$first $last"
+                                        if ((rates ?: 0) < 2) {
+                                            rating = if ((rates ?: 0) == 1) (rating ?: 0f) + 5f else 2.5f
+                                            rates = (rates ?: 0) + 1
+                                        }
+                                        verified = true
                                     }
-                                    verified = true
+                                    session.setAccount(acc)
                                 }
                                 account.apply {
                                     name = "$first $last"
@@ -324,7 +342,7 @@ class Profile : Fragment() {
     }
 
     private fun setupLocation() {
-        RetrofitClient.geocodeService.reverseGeocode("${account.location}", Global.key!!)
+        RetrofitClient.geocodeService.reverseGeocode("${account.location}", session.key.value!!)
             .enqueue(object : Callback<GeocodeResponse> {
                 override fun onResponse(call: Call<GeocodeResponse?>, response: Response<GeocodeResponse?>) {
                     if (response.isSuccessful) {
@@ -373,7 +391,10 @@ class Profile : Fragment() {
     private fun editPhone() {
         phoneDialog = PhoneDialog { phone ->
             snackBar(view, "Phone number has been changed")
-            Global.account!!.phone = phone
+            session.account.value?.let { acc ->
+                acc.phone = phone
+                session.setAccount(acc)
+            }
             account.phone = phone
             binding.phone.text = account.phone
             editAccount()
@@ -399,9 +420,12 @@ class Profile : Fragment() {
         dbRef.child("Account/TodaGo/${account.uid}/location").setValue("$latitude,$longitude")
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
-                    Global.account!!.location = "$latitude,$longitude"
+                    session.account.value?.let { acc ->
+                        acc.location = "$latitude,$longitude"
+                        session.setAccount(acc)
+                    }
                     account.location = "$latitude,$longitude"
-                    if (Global.key == null) fetchAPI { setupLocation() }
+                    if (session.key.value == null) fetchAPI { setupLocation() }
                     else setupLocation()
                     editAccount()
                 } else snackBar(view, "Error: ${task.exception!!.message}")
@@ -451,6 +475,11 @@ class Profile : Fragment() {
             "Log out", "Cancel") { confirm ->
             if (confirm) {
                 auth.signOut()
+                session.setAccount(null)
+                session.setFee(null)
+                session.setKey(null)
+                session.setDeviceID(null)
+                session.setCity(null)
                 val intent = Intent(requireContext(), LoginActivity::class.java)
                 startActivity(intent)
                 requireActivity().finish()
