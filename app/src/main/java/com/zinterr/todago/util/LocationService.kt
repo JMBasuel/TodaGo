@@ -25,6 +25,7 @@ import com.zinterr.todago.model.Global.toLocalAddress
 import com.zinterr.todago.network.RetrofitClient
 import retrofit2.*
 import kotlin.math.roundToInt
+import androidx.core.content.edit
 
 class LocationService: Service() {
 
@@ -61,9 +62,10 @@ class LocationService: Service() {
 
         fun startService(context: Context, city: String, rideUID: String, discount: Boolean) {
             prefs = context.getSharedPreferences("session_prefs", MODE_PRIVATE)
-            prefs.edit().putBoolean("appInForeground", true)
-                .putBoolean("discount", discount)
-                .apply()
+            prefs.edit {
+                putBoolean("appInForeground", true)
+                    .putBoolean("discount", discount)
+            }
             if (instance != null) instance?.stopLocationService()
             Handler(Looper.getMainLooper()).postDelayed({
                 val intent = Intent(context, LocationService::class.java).apply {
@@ -81,7 +83,7 @@ class LocationService: Service() {
         fun setAppInForeground(foreground: Boolean) {
             if (instance != null) {
                 appInForeground = foreground
-                prefs.edit().putBoolean("appInForeground", foreground).apply()
+                prefs.edit { putBoolean("appInForeground", foreground) }
                 if (!foreground) {
                     instance?.currentCity?.let { city ->
                         instance?.currentRideUID?.let { rideUID ->

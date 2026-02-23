@@ -185,7 +185,7 @@ class Profile : Fragment() {
                             acc.email = it
                             session.setAccount(acc)
                         }
-                        account.email == it
+                        account.email = it
                         dbRef.child("Account/TodaGo/${account.uid}/email").setValue(it)
                     }
                 }
